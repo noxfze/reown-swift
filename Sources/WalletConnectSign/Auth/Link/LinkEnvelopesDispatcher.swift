@@ -1,4 +1,5 @@
 
+import Foundation
 #if os(iOS)
 import UIKit
 #endif
@@ -73,6 +74,7 @@ final class LinkEnvelopesDispatcher {
                     continuation.resume(returning: ())
                     return
                 }
+                #if os(iOS)
                 DispatchQueue.main.async { [weak self] in
                     self?.logger.debug("Will open universal link")
                     UIApplication.shared.open(envelopeUrl, options: [.universalLinksOnly: true]) { success in
@@ -83,6 +85,9 @@ final class LinkEnvelopesDispatcher {
                         }
                     }
                 }
+                #else
+                continuation.resume(throwing: Errors.failedToOpenUniversalLink(envelopeUrl.absoluteString))
+                #endif
             }
 
         } catch {
@@ -107,6 +112,7 @@ final class LinkEnvelopesDispatcher {
                 continuation.resume(returning: ())
                 return
             }
+            #if os(iOS)
             DispatchQueue.main.async { [unowned self] in
                 logger.debug("Will open universal link")
                 UIApplication.shared.open(envelopeUrl, options: [.universalLinksOnly: true]) { success in
@@ -117,6 +123,9 @@ final class LinkEnvelopesDispatcher {
                     }
                 }
             }
+            #else
+            continuation.resume(throwing: Errors.failedToOpenUniversalLink(envelopeUrl.absoluteString))
+            #endif
         }
 
         try rpcHistory.resolve(response)
