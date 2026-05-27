@@ -123,15 +123,28 @@ public final class KeychainStorage: KeychainStorageProtocol {
     }
 
     private func buildBaseServiceQuery(for key: String) -> [CFString: Any] {
-        return [
+        var query: [CFString: Any] = [
             kSecClass: kSecClassGenericPassword,
             kSecAttrAccessible: kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly,
             kSecAttrIsInvisible: true,
-            kSecUseDataProtectionKeychain: true,
             kSecAttrService: service,
-            kSecAttrAccessGroup: accessGroup,
             kSecAttrAccount: key
         ]
+        // Helm fork: on unsigned/no-team-ID macOS builds, both
+        // kSecUseDataProtectionKeychain and kSecAttrAccessGroup require a
+        // keychain-access-groups entitlement that ad-hoc signed apps
+        // don't have. When accessGroup is empty, route to the legacy
+        // file-backed keychain (still encrypted at rest, still
+        // access-controlled by the OS, just not iCloud-syncable —
+        // which we never wanted for relay/pairing keys anyway).
+        // Setting either attribute returns errSecMissingEntitlement
+        // (-34018) which propagates through `try!` in AppPairService /
+        // AppProposeService and crashes the app on connect.
+        if !accessGroup.isEmpty {
+            query[kSecAttrAccessGroup] = accessGroup
+            query[kSecUseDataProtectionKeychain] = true
+        }
+        return query
     }
 
 
